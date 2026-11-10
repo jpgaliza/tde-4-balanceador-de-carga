@@ -1,0 +1,52 @@
+services:
+  nginx_lb:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: nginx_lb
+    restart: always
+    ports:
+      - "8080:80"
+    depends_on:
+      - app_server1
+      - app_server2
+      - app_server3
+    networks:
+      - shopnow-net
+
+  app_server1:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: app_server1
+    restart: always
+    environment:
+      - INSTANCE_NAME=app_server1
+    networks:
+      - shopnow-net
+
+  app_server2:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: app_server2
+    restart: always
+    environment:
+      - INSTANCE_NAME=app_server2
+    networks:
+      - shopnow-net
+
+  app_server3:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: app_server3
+    restart: always
+    environment:
+      - INSTANCE_NAME=app_server3
+    networks:
+      - shopnow-net
+
+networks:
+  shopnow-net:
+    driver: bridge
