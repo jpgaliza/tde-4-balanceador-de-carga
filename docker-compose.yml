@@ -11,6 +11,10 @@ services:
       - app_server1
       - app_server2
       - app_server3
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/round-robin.conf:/etc/nginx/algorithms/round-robin.conf:ro
+      - ./nginx/least-conn.conf:/etc/nginx/algorithms/least-conn.conf:ro
     networks:
       - shopnow-net
 
