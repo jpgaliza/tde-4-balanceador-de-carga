@@ -15,10 +15,46 @@ $instanceColors = [
 $theme = $instanceColors[$instanceName] ?? ['bg' => 'bg-slate-700', 'border' => 'border-slate-500', 'badge' => 'bg-slate-100 text-slate-800'];
 
 $products = [
-    ['name' => 'Smartphone Galaxy Ultra', 'price' => 'R$ 4.899,00', 'old_price' => 'R$ 6.299,00', 'category' => 'Smartphones', 'badge' => 'Black Friday -22%'],
-    ['name' => 'Notebook Pro 16" M3', 'price' => 'R$ 11.499,00', 'old_price' => 'R$ 13.999,00', 'category' => 'Informática', 'badge' => 'Oferta Relâmpago'],
-    ['name' => 'Headphone Noise Cancelling', 'price' => 'R$ 899,00', 'old_price' => 'R$ 1.299,00', 'category' => 'Áudio', 'badge' => 'Mais Vendido'],
-    ['name' => 'Smartwatch Sport Fit', 'price' => 'R$ 649,00', 'old_price' => 'R$ 950,00', 'category' => 'Wearables', 'badge' => 'Destaque']
+    [
+        'id' => 'ps5',
+        'name' => 'Console PlayStation 5 Slim 1TB + Controle Sem Fio DualSense',
+        'price' => 'R$ 3.499,00',
+        'old_price' => 'R$ 3.999,00',
+        'category' => 'Games & Consoles',
+        'badge' => 'Black Friday -13%',
+        'badge_color' => 'bg-blue-600 text-white',
+        'image' => 'img/ps5.png'
+    ],
+    [
+        'id' => 'gta6',
+        'name' => 'Grand Theft Auto VI (GTA VI) - PlayStation 5',
+        'price' => 'R$ 499,90',
+        'old_price' => 'R$ 599,90',
+        'category' => 'Pré-Venda Rockstar Games',
+        'badge' => 'Mais Aguardado 🔥',
+        'badge_color' => 'bg-pink-600 text-white',
+        'image' => 'img/gta6.jpg'
+    ],
+    [
+        'id' => 'monster',
+        'name' => 'Frigobar Monster Energy Zero Ultra 50L com LED Verde',
+        'price' => 'R$ 1.899,00',
+        'old_price' => 'R$ 2.499,00',
+        'category' => 'Gamer & Bebidas',
+        'badge' => 'Edição Exclusiva ⚡',
+        'badge_color' => 'bg-emerald-500 text-black font-extrabold',
+        'image' => 'img/monster.jpg'
+    ],
+    [
+        'id' => 'santos',
+        'name' => 'Camisa Santos FC Oficial II 2024/25 Masculina - Umbro',
+        'price' => 'R$ 349,90',
+        'old_price' => 'R$ 399,90',
+        'category' => 'Futebol & Mantos',
+        'badge' => 'Manto Sagrado 👑',
+        'badge_color' => 'bg-amber-400 text-black font-extrabold',
+        'image' => 'img/santos.jpg'
+    ]
 ];
 ?>
 <!DOCTYPE html>
@@ -117,23 +153,31 @@ $products = [
 
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 <?php foreach ($products as $product): ?>
-                <div class="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition duration-200 overflow-hidden flex flex-col">
-                    <div class="bg-gray-100 h-40 flex items-center justify-center p-4 relative">
-                        <span class="absolute top-2 left-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded">
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col group hover:-translate-y-1">
+                    <!-- Product Image Container -->
+                    <div class="bg-gradient-to-b from-gray-50 to-white h-52 flex items-center justify-center p-4 relative overflow-hidden border-b border-gray-100">
+                        <span class="absolute top-2.5 left-2.5 <?= $product['badge_color'] ?> text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-sm z-10">
                             <?= $product['badge'] ?>
                         </span>
-                        <svg class="w-16 h-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
+
+                        <img src="<?= htmlspecialchars($product['image']) ?>" 
+                             alt="<?= htmlspecialchars($product['name']) ?>" 
+                             class="max-h-44 max-w-full object-contain transform group-hover:scale-105 transition-transform duration-300 drop-shadow"
+                             loading="lazy">
                     </div>
+
+                    <!-- Product Info -->
                     <div class="p-4 flex-grow flex flex-col justify-between">
                         <div>
                             <span class="text-[11px] font-semibold text-gray-400 uppercase tracking-wide"><?= $product['category'] ?></span>
-                            <h4 class="font-bold text-gray-900 text-sm mt-1"><?= $product['name'] ?></h4>
-                            <div class="mt-2">
+                            <h4 class="font-bold text-gray-900 text-sm mt-1 leading-snug"><?= $product['name'] ?></h4>
+                            <div class="mt-2.5">
                                 <span class="text-xs text-gray-400 line-through"><?= $product['old_price'] ?></span>
                                 <p class="text-base font-extrabold text-emerald-600"><?= $product['price'] ?></p>
                             </div>
                         </div>
-                        <button class="mt-4 w-full bg-gray-900 hover:bg-black text-white text-xs font-semibold py-2 px-3 rounded-lg transition">
+                        <button class="mt-4 w-full bg-gray-900 hover:bg-black text-white text-xs font-semibold py-2 px-3 rounded-lg transition-colors flex items-center justify-center gap-1.5 shadow-sm active:scale-[0.98]">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
                             Adicionar ao Carrinho
                         </button>
                     </div>

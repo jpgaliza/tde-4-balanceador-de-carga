@@ -1,25 +1,23 @@
 #!/usr/bin/env bash
 set -e
 
-# Script para alternar o algoritmo de balanceamento de carga no Nginx em tempo real
-# Uso: ./scripts/switch-algorithm.sh [round-robin|least-conn|status]
+# Script para alternar o algoritmo do Balanceador de Carga PHP em tempo real
+# Uso: ./scripts/switch-algorithm.sh [round_robin|random|status]
 
 ACTION=${1:-""}
+CONTAINER_NAME="load_balancer"
 
-CONTAINER_NAME="nginx_lb"
-
-# Verifica se o container está em execução
 if ! docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
     echo "Erro: O container '${CONTAINER_NAME}' não está em execução."
-    echo "Execute 'docker compose up -d' primeiro."
     exit 1
 fi
 
 show_status() {
     echo "======================================================"
-    echo " Configuração ativa do Upstream no Nginx:"
+    echo " Algoritmo atualmente ativo no Balanceador PHP:"
     echo "======================================================"
-    docker exec "${CONTAINER_NAME}" cat /etc/nginx/conf.d/upstream.conf
+    CURRENT=$(docker exec "${CONTAINER_NAME}" cat /tmp/lb_algorithm.txt 2>/dev/null || echo "round_robin")
+    echo " -> $CURRENT"
     echo "======================================================"
 }
 
@@ -28,34 +26,26 @@ if [[ "$ACTION" == "status" ]]; then
     exit 0
 fi
 
-if [[ "$ACTION" != "round-robin" && "$ACTION" != "least-conn" ]]; then
-    echo "Uso: $0 [round-robin|least-conn|status]"
+if [[ "$ACTION" != "round_robin" && "$ACTION" != "round-robin" && "$ACTION" != "random" ]]; then
+    echo "Uso: $0 [round_robin|random|status]"
     echo ""
-    echo "Opções disponíveis:"
-    echo "  round-robin - Distribuição sequencial uniforme entre as instâncias"
-    echo "  least-conn  - Direciona requisições para a instância com menor número de conexões ativas"
-    echo "  status      - Exibe o arquivo de upstream atualmente ativo"
+    echo "Algoritmos disponíveis:"
+    echo "  round_robin - Distribuição sequencial uniforme (modular)"
+    echo "  random      - Sorteio aleatório de servidores"
+    echo "  status      - Mostra o algoritmo ativo"
     echo ""
     show_status
     exit 1
 fi
 
-echo "======================================================"
-echo " Alterando algoritmo de balanceamento para: $ACTION"
-echo "======================================================"
+TARGET_ALGO="$ACTION"
+if [[ "$TARGET_ALGO" == "round-robin" ]]; then
+    TARGET_ALGO="round_robin"
+fi
 
-# Copia a configuração do algoritmo escolhido para upstream.conf dentro do container
-docker exec "${CONTAINER_NAME}" cp "/etc/nginx/algorithms/${ACTION}.conf" /etc/nginx/conf.d/upstream.conf
-
-# Valida a sintaxe da configuração
-echo "Testando sintaxe da configuração do Nginx..."
-docker exec "${CONTAINER_NAME}" nginx -t
-
-# Recarrega o Nginx sem derrubar conexões ativas (zero downtime)
-echo "Recarregando processo mestre do Nginx (reload)..."
-docker exec "${CONTAINER_NAME}" nginx -s reload
+# Define o algoritmo no container
+docker exec "${CONTAINER_NAME}" sh -c "echo '$TARGET_ALGO' > /tmp/lb_algorithm.txt"
 
 echo ""
-echo " Algoritmo alterado com sucesso para: $ACTION!"
-echo "======================================================"
+echo " Algoritmo alterado com sucesso para: $TARGET_ALGO"
 show_status
