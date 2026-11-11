@@ -1,20 +1,18 @@
 services:
-  nginx_lb:
+  load_balancer:
     build:
-      context: ./nginx
+      context: ./load_balancer
       dockerfile: Dockerfile
-    container_name: nginx_lb
+    container_name: load_balancer
     restart: always
     ports:
       - "8080:80"
+    environment:
+      - BACKENDS=http://app_server1:80,http://app_server2:80,http://app_server3:80
     depends_on:
       - app_server1
       - app_server2
       - app_server3
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/round-robin.conf:/etc/nginx/algorithms/round-robin.conf:ro
-      - ./nginx/least-conn.conf:/etc/nginx/algorithms/least-conn.conf:ro
     networks:
       - shopnow-net
 
