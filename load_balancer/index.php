@@ -1,97 +1,57 @@
 <?php
-/**
- * =========================================================================
- * BALANCEADOR DE CARGA EM PHP (DESENVOLVIDO DO ZERO) - SHOPNOW (TDE 04)
- * =========================================================================
- * Escuta na porta 8080 e distribui as requisições entre 3 instâncias de backend.
- */
+// =========================================================================
+// BALANCEADOR DE CARGA EM PHP (DO ZERO)
+// =========================================================================
 
-// 1. LISTA DOS SERVIDORES BACKEND (Instâncias da ShopNow)
-$backends = [
-    'http://app_server1:80',
-    'http://app_server2:80',
-    'http://app_server3:80'
-];
+// 1. Lista de servidores (configurável por ambiente ou padrão local)
+$defaultBackends = 'http://127.0.0.1:8001,http://127.0.0.1:8002,http://127.0.0.1:8003';
+$backends = explode(',', getenv('BACKENDS') ?: $defaultBackends);
+$total = count($backends);
 
-$counterFile = '/tmp/lb_counter.txt';
-$algoFile    = '/tmp/lb_algorithm.txt';
+// 2. Escolha do algoritmo: 'round_robin' ou 'random'
+$algoFile = sys_get_temp_dir() . '/lb_algo.txt';
+$algo = $_GET['algo'] ?? (file_exists($algoFile) ? trim(file_get_contents($algoFile)) : 'round_robin');
 
-// 2. DEFINIÇÃO DO ALGORITMO (Via URL ?algo= ou arquivo de configuração)
-$algorithm = $_GET['algo'] ?? (file_exists($algoFile) ? trim(file_get_contents($algoFile)) : 'round_robin');
-if (!in_array($algorithm, ['round_robin', 'random'])) {
-    $algorithm = 'round_robin';
-}
-
-// 3. SELEÇÃO DO SERVIDOR INICIAL BASEADA NO ALGORITMO ESCOLHIDO
-$totalBackends = count($backends);
-$candidates = [];
-
-if ($algorithm === 'random') {
-    // ALGORITMO 1: RANDOM (Sorteio aleatório)
-    $randomIndex = array_rand($backends);
-    $candidates[] = $backends[$randomIndex];
-    // Adiciona os demais como fallback para failover
-    foreach ($backends as $idx => $b) {
-        if ($idx !== $randomIndex) $candidates[] = $b;
+// 3. Ordem de tentativa dos servidores
+$order = [];
+if ($algo === 'random') {
+    // Algoritmo: Random (Aleatório)
+    $first = array_rand($backends);
+    $order[] = $first;
+    for ($i = 0; $i < $total; $i++) {
+        if ($i !== $first) $order[] = $i;
     }
 } else {
-    // ALGORITMO 2: ROUND ROBIN (Distribuição sequencial cíclica)
+    // Algoritmo: Round Robin (Sequencial cíclico)
+    $counterFile = sys_get_temp_dir() . '/lb_counter.txt';
     $counter = file_exists($counterFile) ? (int)file_get_contents($counterFile) : 0;
-    $selectedIndex = $counter % $totalBackends;
-    file_put_contents($counterFile, ($counter + 1) % 1000000);
+    file_put_contents($counterFile, $counter + 1);
 
-    // Ordem de tentativa começando pelo selecionado
-    for ($i = 0; $i < $totalBackends; $i++) {
-        $candidates[] = $backends[($selectedIndex + $i) % $totalBackends];
+    for ($i = 0; $i < $total; $i++) {
+        $order[] = ($counter + $i) % $total;
     }
 }
 
-// 4. MECANISMO DE ENCAMINHAMENTO COM FAILOVER AUTOMÁTICO
-// Monta o caminho solicitado pelo cliente (ex: / ou /health.php)
-$requestUri = $_SERVER['REQUEST_URI'] ?? '/';
-// Remove o parâmetro ?algo= para repassar a URL limpa ao backend
-$cleanUri = preg_replace('/(\?|&)algo=[^&]*/', '', $requestUri);
-if ($cleanUri === '' || $cleanUri === '?') $cleanUri = '/';
+// 4. Encaminhamento com Failover automático
+header('Content-Type: text/plain');
 
-$responseBody = false;
-$httpCode = 503;
-$chosenBackend = null;
+foreach ($order as $idx) {
+    $target = $backends[$idx];
+    
+    // Tenta conectar no servidor com timeout de 1 segundo
+    $ctx = stream_context_create(['http' => ['timeout' => 1]]);
+    $response = @file_get_contents($target, false, $ctx);
 
-// Tenta os servidores em ordem. Se um estiver fora do ar, tenta o próximo!
-foreach ($candidates as $backend) {
-    $targetUrl = rtrim($backend, '/') . $cleanUri;
-
-    $ch = curl_init($targetUrl);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 1); // Timeout de conexão rápido (1s)
-    curl_setopt($ch, CURLOPT_TIMEOUT, 3);        // Timeout total rápido (3s)
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, false);
-
-    $result = curl_exec($ch);
-    $code   = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $error  = curl_errno($ch);
-    curl_close($ch);
-
-    // Se respondeu com sucesso (código 200..399 e sem erro de conexão), concluímos!
-    if (!$error && $code >= 200 && $code < 500) {
-        $responseBody = $result;
-        $httpCode = $code;
-        $chosenBackend = $backend;
-        break;
+    if ($response !== false) {
+        header("X-Backend-Used: $target");
+        header("X-Algorithm-Used: $algo");
+        echo "[BALANCEADOR | Algoritmo: $algo | Direcionado para: $target]\n";
+        echo $response;
+        exit;
     }
-    // Caso falhe (servidor caiu), o loop automaticamente tenta o próximo candidato!
+    // Se falhar (servidor caído), o loop tenta o próximo da lista!
 }
 
-// 5. RESPOSTA AO CLIENTE
-http_response_code($httpCode);
-header('X-Load-Balancer: Custom-PHP-Load-Balancer');
-header('X-Algorithm-Used: ' . $algorithm);
-if ($chosenBackend) {
-    header('X-Backend-Server: ' . $chosenBackend);
-}
-
-if ($responseBody !== false) {
-    echo $responseBody;
-} else {
-    echo "<h1>Erro 503 - Todos os servidores de backend estão indisponíveis</h1>";
-}
+// 5. Se todos os servidores falharem
+http_response_code(503);
+echo "Erro 503: Todos os servidores backend estao fora do ar!\n";

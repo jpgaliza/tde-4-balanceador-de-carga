@@ -7,6 +7,8 @@ services:
     restart: always
     ports:
       - "8080:80"
+    environment:
+      - BACKENDS=http://app_server1:80,http://app_server2:80,http://app_server3:80
     depends_on:
       - app_server1
       - app_server2
