@@ -19,8 +19,7 @@ restart:
 	docker compose restart
 
 test:
-	@chmod +x test.sh
-	@./test.sh
+	@bash test.sh 2>/dev/null || powershell -ExecutionPolicy Bypass -File test.ps1
 
 status:
 	docker compose ps
